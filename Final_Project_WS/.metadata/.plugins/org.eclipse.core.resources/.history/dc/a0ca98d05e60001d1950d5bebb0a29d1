@@ -1,0 +1,116 @@
+#include<avr/io.h>
+#include<avr/interrupt.h>
+#include<util/delay.h>
+#include "lcd.h"
+#include "gpio.h"
+#include "keypad.h"
+#include "common_macros.h"
+#include "uart.h"
+#include "timer.h"
+
+#define ENTER_KEY 13
+#define HMI_Ready 0xAC
+#define CONTROL_Ready 0xCA
+//void initialization (void);
+uint8 g_matching_flag;
+
+int main(void)
+{
+
+	UART_ConfigType UART_Configs={_8_bit,no_parity,_1_bit,9600};
+	uint8 password_1[5];
+	uint8 password_2[5];
+	uint8 i=0;
+
+	LCD_init();
+
+while(1){
+
+	do{
+
+
+
+		LCD_displayStringRowColumn(0, 0, "PLZ enter pass:");
+			LCD_moveCursor(1, 0);
+
+
+while(KEYPAD_getPressedKey()!=ENTER_KEY){
+
+	for(i=0;i<5;i++)
+	{
+		password_1[i]=KEYPAD_getPressedKey();
+		if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0){
+		LCD_displayCharacter('*');
+		_delay_ms(500);
+
+		}
+		else
+		{
+			i--;
+		}
+
+
+	}
+
+
+
+}
+
+LCD_clearScreen();
+LCD_displayStringRowColumn(0, 0, "PLZ Re_enter ");
+LCD_displayStringRowColumn(1, 0, " pass:");
+
+
+for(i=0;i<5;i++)
+{
+	password_2[i]=KEYPAD_getPressedKey();
+	if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0){
+		LCD_displayCharacter('*');
+		_delay_ms(500);
+
+	}
+	else
+	{
+		i--;
+	}
+
+
+}
+
+LCD_clearScreen();
+if(password_1==password_2){
+	g_matching_flag=1;
+
+
+	LCD_displayStringRowColumn(0, 4, "Matched");
+	//send pass to eeprom
+	for(i=0;i<5;i++){
+		while(UART_recieveByte()!=CONTROL_Ready);
+		UART_sendByte(password_1[i]);
+
+
+	}
+
+
+}
+else{
+
+	LCD_displayStringRowColumn(0, 4, "UnMatched");
+}
+
+LCD_clearScreen();
+
+
+}while(g_matching_flag==0);
+
+	}
+
+
+}
+
+/*void initialization (void){
+	LCD_init();
+	Timer1_init(Config_Ptr)
+
+
+}*/

@@ -1,0 +1,40 @@
+06:15:51 **** Incremental Build of configuration Debug for project Control_ECU ****
+make all 
+Building file: ../Control_App.c
+Invoking: AVR Compiler
+avr-gcc -Wall -g2 -gstabs -O0 -fpack-struct -fshort-enums -ffunction-sections -fdata-sections -std=gnu99 -funsigned-char -funsigned-bitfields -mmcu=atmega32 -DF_CPU=1000000UL -MMD -MP -MF"Control_App.d" -MT"Control_App.o" -c -o "Control_App.o" "../Control_App.c"
+In file included from ../Control_App.c:3:
+c:/winavr-20100110/lib/gcc/../../avr/include/util/delay.h:90:3: warning: #warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+Finished building: ../Control_App.c
+ 
+Building target: Control_ECU.elf
+Invoking: AVR C Linker
+avr-gcc -Wl,-Map,Control_ECU.map -mmcu=atmega32 -o "Control_ECU.elf"  ./Control_App.o ./PWM.o ./buzzer.o ./external_eeprom.o ./gpio.o ./lcd.o ./motor.o ./timer.o ./twi.o ./uart.o   
+Finished building target: Control_ECU.elf
+ 
+Invoking: AVR Create Extended Listing
+avr-objdump -h -S Control_ECU.elf  >"Control_ECU.lss"
+Finished building: Control_ECU.lss
+ 
+Create Flash image (ihex format)
+avr-objcopy -R .eeprom -R .fuse -R .lock -R .signature -O ihex Control_ECU.elf  "Control_ECU.hex"
+Finished building: Control_ECU.hex
+ 
+Invoking: Print Size
+avr-size --format=avr --mcu=atmega32 Control_ECU.elf
+AVR Memory Usage
+----------------
+Device: atmega32
+
+Program:   13680 bytes (41.7% Full)
+(.text + .data + .bootloader)
+
+Data:        326 bytes (15.9% Full)
+(.data + .bss + .noinit)
+
+
+Finished building: sizedummy
+ 
+
+06:15:52 Build Finished. 0 errors, 1 warnings. (took 736ms)
+

@@ -1,0 +1,42 @@
+#include<avr/io.h>
+#include<avr/interrupt.h>
+#include<util/delay.h>
+#include "gpio.h"
+#include "common_macros.h"
+#include "uart.h"
+#include "timer.h"
+#include "twi.h"
+#include "motor.h"
+
+#define CONTROL_Ready 0xCA
+#define HMI_Ready 0xAC
+#define CONTROL_ADDRESS 0x01
+
+//void initialization (void);
+
+uint8 password_1[5];
+uint8 password_2[5];
+uint8 g_matching_flag=0;
+typedef enum {Unmatched,Matched}matchig_state;
+
+
+int main(void)
+{
+	uint8 i;
+	UART_ConfigType UART_Configs={_8_bit,no_parity,_1_bit,9600};
+	TWI_ConfigType TWI_Configs={CONTROL_ADDRESS,1000};
+	UART_init(&UART_Configs);
+	TWI_init(&TWI_Configs);
+	DcMotor_Init();
+	while(UART_recieveByte()!=HMI_Ready);
+	DcMotor_Rotate(CW,50);
+
+	while(1){
+
+
+
+
+
+	}
+}
+

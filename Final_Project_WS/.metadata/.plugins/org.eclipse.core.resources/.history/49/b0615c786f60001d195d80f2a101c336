@@ -1,0 +1,35 @@
+#include<avr/io.h>
+#include<avr/interrupt.h>
+#include<util/delay.h>
+#include "lcd.h"
+#include "gpio.h"
+#include "keypad.h"
+#include "common_macros.h"
+#include "uart.h"
+#include "timer.h"
+
+#define ENTER_KEY 13
+#define HMI_Ready 0xAC
+#define CONTROL_Ready 0xCA
+//void initialization (void);
+uint8 g_matching_flag;
+
+int main(void)
+{
+
+	UART_ConfigType UART_Configs={_8_bit,no_parity,_1_bit,9600};
+	uint8 password_1[5];
+	uint8 password_2[5];
+	uint8 i=0;
+	typedef enum {Unmatched,Matched}matchig_state;
+	LCD_init();
+	UART_init(&UART_Configs);
+	UART_sendByte(HMI_Ready);
+	while(1){
+
+
+
+}
+
+
+}

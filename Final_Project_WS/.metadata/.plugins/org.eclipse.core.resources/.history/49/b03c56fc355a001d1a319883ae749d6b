@@ -1,0 +1,21 @@
+#include<avr/io.h>
+#include "lcd.h"
+#include "gpio.h"
+#include "keypad.h"
+#include "common_macros.h"
+
+int main (void)
+{
+LCD_init();
+uint8
+
+while(1)
+{
+
+
+
+
+}
+
+
+}

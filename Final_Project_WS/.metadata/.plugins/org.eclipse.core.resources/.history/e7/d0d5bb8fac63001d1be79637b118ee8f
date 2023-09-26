@@ -1,0 +1,421 @@
+#include<avr/io.h>
+#include<avr/interrupt.h>
+#include<util/delay.h>
+#include "lcd.h"
+#include "gpio.h"
+#include "keypad.h"
+#include "common_macros.h"
+#include "uart.h"
+#include "timer.h"
+
+
+#define ENTER_KEY 13
+#define HMI_Ready 0xAC
+#define CONTROL_Ready 0xCA
+#define OPEN_DOOR 0x66
+#define CHANGE_PASS 0x55
+
+typedef enum {Unmatched,Matched}matchig_state;
+uint8 g_matching_flag;
+uint8 password_1[5];
+uint8 password_2[5];
+uint8 i;
+uint8 g_option;
+uint8 g_ticks=0;
+matchig_state password_state;
+uint8 g_trials=0;
+
+/*******************************************************************************
+ *                      Functions Prototypes                                   *
+ *******************************************************************************/
+
+void passwor_setting(void);
+void main_options(void);
+void open_door(void);
+void TIMER_ISR_COUNTER(void);
+void Change_pass(void);
+
+int main(void)
+{
+
+	UART_ConfigType UART_Configs={_8_bit,no_parity,_1_bit,9600};
+	Timer1_ConfigType TIMER_Configs={0,1000,F_CPU_1024,CTC_MODE};
+	Timer1_init(&TIMER_Configs);
+	LCD_init();
+	UART_init(&UART_Configs);
+	passwor_setting();
+	LCD_clearScreen();
+
+	/***______________________________________________________________________***/
+
+	while(1)
+	{
+
+
+
+		do{
+			main_options();
+			g_option=KEYPAD_getPressedKey();
+
+
+		}while(g_option!='-'&&g_option!='+');
+
+
+		switch (g_option)
+		{
+		case'+': open_door();
+
+
+		break;
+		case'-':Change_pass();
+
+
+		break;
+
+
+		}
+
+
+
+
+	}
+
+
+
+
+}
+
+
+
+void passwor_setting(void)
+{
+
+	do{
+
+		g_matching_flag=0;
+
+		LCD_displayStringRowColumn(0, 0, "PLZ Enter the");
+		LCD_moveCursor(1, 0);
+		LCD_displayStringRowColumn(1, 0, "New Pass:");
+
+
+
+		while(KEYPAD_getPressedKey()!=ENTER_KEY){
+
+			for(i=0;i<5;i++)
+			{
+				password_1[i]=KEYPAD_getPressedKey();
+				if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0)
+				{
+					LCD_displayCharacter('*');
+					_delay_ms(500);
+
+				}
+
+				else
+
+				{
+					i--;
+				}
+
+
+			}
+
+
+
+		}
+
+		LCD_clearScreen();
+		LCD_displayStringRowColumn(0, 0, "PLZ Re_enter ");
+		LCD_displayStringRowColumn(1, 0, "Pass:");
+
+		//while(KEYPAD_getPressedKey()!=ENTER_KEY){
+
+		for(i=0;i<5;i++)
+		{
+			password_2[i]=KEYPAD_getPressedKey();
+			if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0){
+				LCD_displayCharacter('*');
+				_delay_ms(500);
+
+			}
+
+			else
+			{
+				i--;
+			}
+
+
+		}
+		//}
+
+		//LCD_clearScreen();
+
+
+		/*send password1  to control*/
+
+		while(UART_recieveByte()!=CONTROL_Ready);
+		for(i=0;i<5;i++)
+		{
+
+			UART_sendByte(password_1[i]);
+		}
+
+
+
+		while(UART_recieveByte()!=CONTROL_Ready);
+		for(i=0;i<5;i++)
+		{
+
+			UART_sendByte(password_2[i]);
+		}
+
+		_delay_ms(10);
+
+
+		UART_sendByte(HMI_Ready);
+		password_state=UART_recieveByte();
+
+		LCD_clearScreen();
+
+		if(password_state == Matched) /*flag that sent by CoNTrOl MC that indicates the state of the password*/
+		{
+			g_matching_flag=1;
+			LCD_displayStringRowColumn(0, 4, "Matched");
+			_delay_ms(500);
+
+		}
+
+		else{
+
+			LCD_displayStringRowColumn(0, 4, "Unmatched");
+			_delay_ms(500);
+
+		}
+
+
+	}while(g_matching_flag==0);
+}
+
+void main_options(void)
+{
+
+	LCD_displayStringRowColumn(0, 0,"+:Open Door");
+	LCD_displayStringRowColumn(1, 0,"-:Change Pass");
+	//return KEYPAD_getPressedKey();
+
+}
+
+void open_door(void)
+{
+	do{
+		while(UART_recieveByte()!=CONTROL_Ready);
+		UART_sendByte(OPEN_DOOR);
+		LCD_clearScreen();
+		LCD_displayStringRowColumn(0, 0, "PLZ Enter Pass:");
+		LCD_moveCursor(1, 0);
+
+
+
+		while(KEYPAD_getPressedKey()!=ENTER_KEY){
+
+			for(i=0;i<5;i++)
+			{
+				password_1[i]=KEYPAD_getPressedKey();
+				if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0)
+				{
+					LCD_displayCharacter('*');
+					_delay_ms(500);
+
+//LCD_intgerToString(KEYPAD_getPressedKey());
+
+				}
+
+				else
+
+				{
+					i--;
+				}
+
+
+			}
+
+
+
+		}
+
+/*there is a problem here */
+		while(UART_recieveByte()!=CONTROL_Ready);
+		for(i=0;i<5;i++)
+		{
+
+			UART_sendByte(password_1[i]);
+
+
+		}
+
+		UART_sendByte(HMI_Ready);
+		password_state=UART_recieveByte();
+		if(password_state == Matched)
+		{
+			g_ticks=0;
+			LCD_clearScreen();
+			LCD_displayString("Opennig..");
+			Timer1_setCallBack(TIMER_ISR_COUNTER);
+			while(g_ticks!=15);
+
+			g_ticks=0;
+			LCD_clearScreen();
+			LCD_displayString("WELCOM BACK");
+			Timer1_setCallBack(TIMER_ISR_COUNTER);
+			while(g_ticks!=3);
+
+			g_ticks=0;
+			LCD_clearScreen();
+			LCD_displayString("Closing..");
+			Timer1_setCallBack(TIMER_ISR_COUNTER);
+			while(g_ticks!=15);
+			Timer1_deInit();
+
+
+			break;
+
+
+		}
+
+		else{
+			g_trials++;
+
+
+		}
+
+		if(g_trials==1){
+			LCD_clearScreen();
+			LCD_displayStringRowColumn(0, 1, "TRIALS=1");
+			_delay_ms(1000);
+		}
+		else if(g_trials==1){
+			LCD_clearScreen();
+			LCD_displayStringRowColumn(0, 1, "TRIALS=2");
+			_delay_ms(500);
+		}
+
+
+	}while(g_trials<3);
+
+	if(g_trials==3){
+		g_ticks=0;
+		LCD_clearScreen();
+		LCD_displayStringRowColumn(0, 2, "!!!!ERROR!!!!");
+		Timer1_setCallBack(TIMER_ISR_COUNTER);
+		while(g_ticks!=60);
+		Timer1_deInit();
+		g_trials=0;
+	}
+
+
+
+
+
+}
+
+
+void TIMER_ISR_COUNTER(void)
+{
+	g_ticks++;
+}
+
+
+void Change_pass(void)
+{
+	do{
+
+		while(UART_recieveByte()!=CONTROL_Ready);
+		UART_sendByte(CHANGE_PASS);
+
+		LCD_clearScreen();
+		LCD_displayStringRowColumn(0, 0, "PLZ Enter Pass:");
+		LCD_moveCursor(1, 0);
+
+
+
+		while(KEYPAD_getPressedKey()!=ENTER_KEY){
+
+			for(i=0;i<5;i++)
+			{
+				password_1[i]=KEYPAD_getPressedKey();
+				if(KEYPAD_getPressedKey()<=9 && KEYPAD_getPressedKey()>=0)
+				{
+					LCD_displayCharacter('*');
+					_delay_ms(500);
+
+				}
+
+				else
+
+				{
+					i--;
+				}
+
+
+			}
+
+
+
+		}
+
+
+		while(UART_recieveByte()!=CONTROL_Ready);
+		for(i=0;i<5;i++)
+		{
+
+			UART_sendByte(password_1[i]);
+
+
+		}
+
+		UART_sendByte(HMI_Ready);
+		password_state=UART_recieveByte();
+
+		if(password_state == Matched)
+		{
+			LCD_clearScreen();
+			LCD_displayStringRowColumn(0, 4, "Matched");
+			_delay_ms(500);
+
+			passwor_setting();
+			break;
+		}
+
+		else
+		{
+			g_trials++;
+		}
+		if(g_trials==1){
+			LCD_clearScreen();
+			LCD_displayStringRowColumn(0, 1, "TRIALS=1");
+			_delay_ms(500);
+		}
+		else if(g_trials==1){
+			LCD_clearScreen();
+			LCD_displayStringRowColumn(0, 1, "TRIALS=2");
+			_delay_ms(500);
+		}
+
+
+
+
+	}while(g_trials<3);
+	if(g_trials==3){
+		g_ticks=0;
+		LCD_clearScreen();
+		LCD_displayStringRowColumn(0, 2, "!!!!ERROR!!!!");
+		Timer1_setCallBack(TIMER_ISR_COUNTER);
+		while(g_ticks!=60);
+		Timer1_deInit();
+		g_trials=0;
+	}
+
+
+
+}
